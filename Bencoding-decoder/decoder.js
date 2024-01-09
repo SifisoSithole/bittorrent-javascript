@@ -1,4 +1,5 @@
 const stringDecoder = require('./string-decoder.js');
+const integerDecoder = require('./integer-decoder.js');
 
 /**
  * Decodes B-encoded values.
@@ -18,9 +19,11 @@ function DecodeBencode() {
         if (!isNaN(bencodedValue[0])) {
             // If it's a string, use the stringDecoder module
             return stringDecoder(bencodedValue);
+        } else if (bencodedValue[0] == 'i') {
+            return integerDecoder(bencodedValue);
         } else {
             // Throw an error for unsupported types (for now)
-            throw new Error("Only decoding of strings, integers, lists, and dictionaries is supported at the moment");
+            throw new Error("Only decoding of strings, integers, lists, and dictionaries is supported.");
         }
     };
 }
