@@ -1,6 +1,7 @@
 const stringDecoder = require('./string-decoder.js');
 const integerDecoder = require('./integer-decoder.js');
 const listDecoder = require('./list-decoder.js');
+const dictionaryDecoder = require('./dictionary-decoder.js');
 
 
 /**
@@ -27,8 +28,10 @@ function DecodeBencode() {
         } else if (bencodedValue[0] === 'l'){
             // If it's a list, use the listDecoder module
             return listDecoder(bencodedValue, this.decode)
+        } else if (bencodedValue[0] === 'd') {
+            return dictionaryDecoder(bencodedValue, this.decode);
         } else {
-            // Throw an error for unsupported types (for now)
+            // Throw an error for unsupported types
             throw new Error("Only decoding of strings, integers, lists, and dictionaries is supported.");
         }
     };

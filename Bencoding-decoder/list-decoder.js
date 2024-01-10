@@ -15,13 +15,13 @@ const extractBencodedValue = (() => {
         if (itemType === 'string') {
             const stringLength = parseInt(remainingList[0]);
             if (isNaN(stringLength)) {
-                return 'Invalid';
+                throw new Error("The given list is not a bencoded list.");
             }
             return { item: remainingList.slice(0, 2 + stringLength), length: 2 + stringLength };
         } else if (itemType === 'integer') {
             const endOfInteger = remainingList.indexOf('e');
             if (endOfInteger === -1) {
-                return 'Invalid';
+                throw new Error("The given list is not a bencoded list.");
             }
             return { item: remainingList.slice(0, endOfInteger + 1), length: endOfInteger + 1 };
         } else if (itemType === 'list') {
@@ -39,16 +39,12 @@ const extractBencodedValue = (() => {
                     listItem = getListItem(remainingList.slice(currentIndex), 'list');
                 }
 
-                if (listItem === 'Invalid') {
-                    return 'Invalid';
-                }
-
                 parsedList.push(listItem.item);
                 currentIndex += listItem.length;
             }
 
             if (currentIndex >= remainingList.length || remainingList[currentIndex] !== 'e') {
-                return 'Invalid'; // Missing 'e' at the end of the list
+                throw new Error("The given list is not a bencoded list."); // Missing 'e' at the end of the list
             }
 
             return { item: parsedList, length: currentIndex + 1 }; // +1 to include the 'e' character

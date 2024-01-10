@@ -10,7 +10,6 @@ if (command === "decode") {
     const bencodedValue = process.argv[3];
 
     // Decode and log the result
-    console.log('here: ', bencodedValue);
     console.log(BencodeDecoder.decode(bencodedValue));
 } else {
     // Throw an error for an unknown command
