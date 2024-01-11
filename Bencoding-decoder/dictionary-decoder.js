@@ -1,5 +1,17 @@
+/**
+ * Extracts a Bencoded value from the provided string.
+ * @param {string} bencodedValue - The Bencoded string to extract the value from.
+ * @param {function} decodeBencode - A function to decode Bencoded strings.
+ * @returns {Object} - The decoded Bencoded value.
+ */
 const extractBencodedValue = (() => {
-    function extractKey(bencodedValue){
+    /**
+     * Extracts a Bencoded dictionary key and its length from the provided string.
+     * @param {string} bencodedValue - The Bencoded string containing the dictionary key.
+     * @returns {Object} - An object with the extracted key and its length.
+     * @throws {Error} - Throws an error if the dictionary key is not a Bencoded string.
+     */
+    function extractKey(bencodedValue) {
         const stringLength = parseInt(bencodedValue[0]);
         if (isNaN(stringLength)) {
             throw new Error("The dictionary key must be a Bencoded string");
@@ -8,6 +20,14 @@ const extractBencodedValue = (() => {
         return { key: bencodedValue.slice(0, 2 + stringLength), length: 2 + stringLength };
     }
 
+    /**
+     * Extracts a Bencoded value of the specified type from the provided string.
+     * @param {string} bencodedValue - The Bencoded string to extract the value from.
+     * @param {string} itemType - The type of Bencoded value to extract ('string', 'integer', 'list', 'dictionary').
+     * @param {function} decodeBencode - A function to decode Bencoded strings.
+     * @returns {Object} - An object with the extracted value and its length.
+     * @throws {Error} - Throws an error if the input is not a Bencoded list or if the end of the integer is not found.
+     */
     function extractValue(bencodedValue, itemType, decodeBencode){
         if (itemType === 'string') {
             const stringLength = parseInt(bencodedValue[0]);
@@ -22,29 +42,26 @@ const extractBencodedValue = (() => {
             }
             return { value: bencodedValue.slice(0, endOfInteger + 1), length: endOfInteger + 1 };
         } else if (itemType === 'list') {
-            const parsedList = [];
-            let currentIndex = 1; // Start at index 1 to skip the 'l' character
+            let bencodedList = 'l';
+            let i = 1; // Start at index 1 to skip the 'l' character
 
-            while (currentIndex < bencodedValue.length && bencodedValue[currentIndex] !== 'e') {
-                let valueItem;
-
-                if (!isNaN(bencodedValue[currentIndex])) {
-                    valueItem = extractValue(bencodedValue.slice(currentIndex), 'string', decodeBencode);
-                } else if (bencodedValue[currentIndex] === 'i') {
-                    valueItem = extractValue(bencodedValue.slice(currentIndex), 'integer', decodeBencode);
-                } else if (bencodedValue[currentIndex] === 'l') {
-                    valueItem = extractValue(bencodedValue.slice(currentIndex), 'list', decodeBencode);
-                } 
-
-                parsedList.push(valueItem.value);
-                currentIndex += valueItem.length;
+            while (i < bencodedValue.length && bencodedValue[i] !== 'e') {
+                let item;
+                if (!isNaN(bencodedValue[i])) {
+                    item = extractValue(bencodedValue.slice(i), 'string', decodeBencode);
+                } else if (bencodedValue[i] === 'i') {
+                    item = extractValue(bencodedValue.slice(i), 'integer', decodeBencode);
+                } else if (bencodedValue[i] === 'l') {
+                    item = extractValue(bencodedValue.slice(i), 'list', decodeBencode);
+                } else if (bencodedValue[i] === 'd') {
+                    item = extractValue(bencodedValue.slice(i), 'dictionary', decodeBencode);
+                }
+                bencodedList += item.value;
+                i += item.length
             }
+            bencodedList += 'e';
 
-            if (currentIndex >= bencodedValue.length || bencodedValue[currentIndex] !== 'e') {
-                throw new Error("The given list is not a bencoded list."); // Missing 'e' at the end of the list
-            }
-
-            return { value: parsedList, length: currentIndex + 1 }; // +1 to include the 'e' character
+            return { value: bencodedList, length: i + 1 }; // +1 to include the 'e' character
         } else if (itemType === 'dictionary'){
             let decodedDictionary = parseDictionary(bencodedValue, decodeBencode);
             decodedDictionary.length;
@@ -52,14 +69,12 @@ const extractBencodedValue = (() => {
         }
     }
 
-    function decodeList(value, decodeBencode) {
-        if (Array.isArray(value)) {
-            return value.map(item => decodeList(item, decodeBencode));
-        } else {
-            return decodeBencode(value);
-        }
-    }
-
+    /**
+     * Parses a Bencoded dictionary from the provided string.
+     * @param {string} bencodedValue - The Bencoded string to parse the dictionary from.
+     * @param {function} decodeBencode - A function to decode Bencoded strings.
+     * @returns {Object} - An object representing the parsed Bencoded dictionary.
+     */
     function parseDictionary(bencodedValue, decodeBencode) {
         const decodedDictionary = { 'value': {}, 'length': 0};
         let i = 1; // Start at index 1 to skip the 'd' character
@@ -78,7 +93,7 @@ const extractBencodedValue = (() => {
                 value = decodeBencode(valueItem.value);
             } else if (bencodedValue[i] === 'l') {
                 valueItem = extractValue(bencodedValue.slice(i), 'list', decodeBencode);
-                value = valueItem.value.map(value => decodeList(value, decodeBencode));;
+                value = decodeBencode(valueItem.value);
             } else if (bencodedValue[i] === 'd') {
                 valueItem = extractValue(bencodedValue.slice(i), 'dictionary', decodeBencode);
                 value = valueItem.value;
@@ -86,15 +101,17 @@ const extractBencodedValue = (() => {
             i += valueItem.length;
             decodedDictionary.value[key] = value;
             decodedDictionary.length = i;
-            if (bencodedValue.slice(i)[0] === 'e'){
-                decodedDictionary.length += 1;
-                return decodedDictionary;
-            }
         }
 
         return decodedDictionary;
     };
 
+    /**
+     * Main function to extract a Bencoded value from the provided string.
+     * @param {string} bencodedValue - The Bencoded string to extract the value from.
+     * @param {function} decodeBencode - A function to decode Bencoded strings.
+     * @returns {Object} - The decoded Bencoded value.
+     */
     return (bencodedValue, decodeBencode) => {
         return parseDictionary(bencodedValue, decodeBencode).value;
     };
