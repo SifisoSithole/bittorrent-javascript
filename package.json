@@ -11,5 +11,8 @@
   "devDependencies": {
     "chai": "^5.0.0",
     "mocha": "^10.2.0"
+  },
+  "dependencies": {
+    "bncode": "^0.5.3"
   }
 }

@@ -12,12 +12,13 @@ const extractBencodedValue = (() => {
      * @throws {Error} - Throws an error if the dictionary key is not a Bencoded string.
      */
     function extractKey(bencodedValue) {
-        const stringLength = parseInt(bencodedValue[0]);
+        const stringLengthSize = bencodedValue.slice(0, bencodedValue.indexOf(':') + 1);
+        const stringLength = parseInt(stringLengthSize)
         if (isNaN(stringLength)) {
             throw new Error("The dictionary key must be a Bencoded string");
         }
 
-        return { key: bencodedValue.slice(0, 2 + stringLength), length: 2 + stringLength };
+        return { key: bencodedValue.slice(0, stringLengthSize.length + stringLength), length: stringLengthSize.length + stringLength };
     }
 
     /**
@@ -30,11 +31,12 @@ const extractBencodedValue = (() => {
      */
     function extractValue(bencodedValue, itemType, decodeBencode){
         if (itemType === 'string') {
-            const stringLength = parseInt(bencodedValue[0]);
+            const stringLengthSize = bencodedValue.slice(0, bencodedValue.indexOf(':') + 1);
+            const stringLength = parseInt(stringLengthSize)
             if (isNaN(stringLength)) {
                 throw new Error("The given list is not a bencoded list.");
             }
-            return { value: bencodedValue.slice(0, 2 + stringLength), length: 2 + stringLength };
+            return { value: bencodedValue.slice(0, stringLengthSize.length + stringLength), length: stringLengthSize.length + stringLength };
         } else if (itemType === 'integer') {
             const endOfInteger = bencodedValue.indexOf('e');
             if (endOfInteger === -1) {
@@ -79,7 +81,7 @@ const extractBencodedValue = (() => {
         const decodedDictionary = { 'value': {}, 'length': 0};
         let i = 1; // Start at index 1 to skip the 'd' character
 
-        while (i < bencodedValue.length - 1) { // -1 to exclude the 'e' character
+        while (i < bencodedValue.length - 1 && bencodedValue[i] !== 'e') { // -1 to exclude the 'e' character
             let keyItem = extractKey(bencodedValue.slice(i));
             let key = decodeBencode(keyItem.key);
             i += keyItem.length;
