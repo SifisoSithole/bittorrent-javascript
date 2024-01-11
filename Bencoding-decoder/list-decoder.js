@@ -37,7 +37,7 @@ const extractBencodedValue = (() => {
                     listItem = getListItem(remainingList.slice(currentIndex), 'integer');
                 } else if (remainingList[currentIndex] === 'l') {
                     listItem = getListItem(remainingList.slice(currentIndex), 'list');
-                }
+                } 
 
                 parsedList.push(listItem.item);
                 currentIndex += listItem.length;
@@ -52,6 +52,57 @@ const extractBencodedValue = (() => {
     }
 
     /**
+     * Parses a Bencoded dictionary from the given Bencoded string.
+     * @param {string} bencodedValue - The Bencoded string containing the dictionary.
+     * @returns {object} - An object containing the parsed Bencoded dictionary and its length.
+     *                    { 'item': parsedBencodedDictionary, 'length': totalLength }
+     */
+    function getBencodedDictionary(bencodedValue) {
+        // Initialize the Bencoded dictionary string
+        let bencodedDictionary = 'd';
+        let i = 1;
+
+        // Iterate through the Bencoded string until the end of the dictionary ('e') is reached
+        while (i < bencodedValue.length && bencodedValue[i] !== 'e') {
+            let keyValue;
+
+            // Determine the type of the key-value pair and extract it
+            if (!isNaN(bencodedValue[i])) {
+                keyValue = getListItem(bencodedValue.slice(i), 'string');
+            } else if (bencodedValue[i] === 'i') {
+                keyValue = getListItem(bencodedValue.slice(i), 'integer');
+            } else if (bencodedValue[i] === 'l') {
+                // Handle lists
+                keyValue = parseLists(bencodedValue.slice(i), 'list');
+                let bencodedList = 'l';
+
+                // Concatenate items within the list
+                // revise code later to handle exceptions
+                keyValue[0].forEach(item => {
+                    bencodedList += item;
+                });
+
+                bencodedList += 'e';
+                keyValue = { 'item': bencodedList, 'length': bencodedList.length };
+            } else if (bencodedValue[i] === 'd') {
+                // Handle nested dictionaries
+                keyValue = getBencodedDictionary(bencodedValue.slice(i));
+            }
+
+            // Concatenate the key-value pair to the Bencoded dictionary string
+            bencodedDictionary += keyValue.item;
+            i += keyValue.length;
+        }
+
+        // Add the 'e' to signify the end of the dictionary
+        bencodedDictionary += 'e';
+
+        // Return the parsed Bencoded dictionary and its total length
+        return { 'item': bencodedDictionary, 'length': i + 1 };
+    }
+
+
+    /**
      * Parses Bencoded lists and returns an array of decoded items.
      * @param {string} bencodedValue - The Bencoded string to parse.
      * @returns {Array|string} - An array of decoded items or 'Invalid' if invalid.
@@ -60,7 +111,7 @@ const extractBencodedValue = (() => {
         const parsedList = [];
         let i = 0;
 
-        while (i < bencodedValue.length) {
+        while (i < bencodedValue.length && bencodedValue[i] !== 'e') {
             let listItem;
 
             if (!isNaN(bencodedValue[i])) {
@@ -69,12 +120,9 @@ const extractBencodedValue = (() => {
                 listItem = getListItem(bencodedValue.slice(i), 'integer');
             } else if (bencodedValue[i] === 'l') {
                 listItem = getListItem(bencodedValue.slice(i), 'list');
+            } else if (bencodedValue[i] === 'd'){
+                listItem = getBencodedDictionary(bencodedValue.slice(i));
             }
-
-            if (listItem === 'Invalid') {
-                return 'Invalid';
-            }
-
             parsedList.push(listItem.item);
             i += listItem.length;
         }
