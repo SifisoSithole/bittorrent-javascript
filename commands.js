@@ -1,5 +1,6 @@
 const BencodeDecoder = require('./Bencoding-decoder/decoder.js');
 const TorrentFileParser = require('./Bencoding-decoder/torrent-file-parser.js');
+const TorrentFileDownloader = require('./downloader/torrent-downloader.js');
 
 /**
  * Executes the 'decode' command, decoding and logging a B-encoded value.
@@ -33,7 +34,19 @@ async function executeInfoCommand(filePath) {
     }
 }
 
+async function executePeersCommand(filePath){
+    try {
+        const torrentData = await TorrentFileParser.parse(filePath);
+        const torrentInfo = TorrentFileParser.info(torrentData);
+
+        TorrentFileDownloader.discoverPeers(torrentInfo);
+    } catch (error) {
+        console.error(error)
+    }
+}
+
 module.exports = {
     executeDecodeCommand,
     executeInfoCommand,
+    executePeersCommand
 };
